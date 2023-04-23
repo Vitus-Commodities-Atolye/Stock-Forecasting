@@ -33,7 +33,7 @@ Technology Sector (NDXT) Companies 3.
 - Present your solution and reasoning behind your implemented ML model configurations
 
 
-## To start the project
+## Start the project
 The program runs at default port which is https://localhost:8050
 
 ```
