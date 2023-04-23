@@ -1,9 +1,10 @@
 import pandas as pd
 from dash import Dash, dcc, html, Input, Output
 import plotly.express as px
+import plotly.graph_objects as go
 
 # reading the csv files and convert them to data frame
-stocks = pd.read_csv("data.csv")
+stocks = pd.read_csv("historical_results.csv")
 forecasts = pd.read_csv("prediction_results.csv")
 
 # init Dash app
@@ -82,7 +83,7 @@ app.layout = html.Div([
 Precondition : Ticker name and start date should be defined. To compare with another ticker needs a ticker name 
 should be provided (optional). 
 
-Postcondition : The stock trend of the ticker with given date is provided.
+Post-condition : The stock trend of the ticker with given date is provided.
 
 @:param stock_code : ticker name
 @:param stock_code_cmp (optional) : ticker name for comparing the stock trend of the given ticker
@@ -100,7 +101,7 @@ def update_stock_graph(stock_code, stock_code_cmp, date):
     df1 = stocks.query(f"Stock in ['{stock_code}']")
 
     # define start and end dates for date range
-    start_date = date;
+    start_date = date
     end_date = df1['Date'].max()
 
     # draws a line of the given ticker's data
@@ -109,7 +110,8 @@ def update_stock_graph(stock_code, stock_code_cmp, date):
         x='Date',
         y='Close',
         range_x=[start_date, end_date],
-        color=df1['Stock']
+        color=df1['Stock'],
+        labels={'Close': 'Price'}
     )
 
     if stock_code_cmp is not None:
@@ -138,7 +140,7 @@ def update_stock_graph(stock_code, stock_code_cmp, date):
 Precondition : Ticker name and interval should be defined. To compare with another ticker needs a ticker name 
 should be provided (optional). 
 
-Postcondition : The forecast trend of the ticker with given interval is provided.
+Post-condition : The forecast trend of the ticker with given interval is provided.
 
 @:param stock_code : ticker name
 @:param stock_code_cmp (optional) : ticker name for comparing the stock trend of the given ticker
@@ -162,31 +164,39 @@ def update_forecast_graph(stock_code, stock_code_cmp, interval):
     start_date = forecasts['Date'].min().date()
     end_date = (start_date + pd.DateOffset(days=int(interval))).date()
 
-    # draws a line of the given ticker's data
-    fig = px.line(
-        df1,
-        x='Date',
-        y='Prediction',
-        range_x=[start_date, end_date],
-        color=df1['Stock'],
-    )
+    # Create the figure and add two scatter traces
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(x=df1['Date'],
+                             y=df1['Actual'],
+                             name=f'{stock_code} Actual'))
+
+    fig.add_trace(go.Scatter(x=df1['Date'],
+                             y=df1['Prediction'],
+                             name=f'{stock_code} Prediction',
+                             line=dict(dash='dash')))
 
     if stock_code_cmp is not None:
         # query for gathering related ticker data.
         df2 = forecasts.query(f"Stock in ['{stock_code_cmp}']")
 
-        fig.add_trace(px.line(
-            df2,
-            x='Date',
-            y='Prediction',
-            range_x=[start_date, end_date],
-            color=df2['Stock'],
-            color_discrete_sequence=["red"]
-        ).data[0], )
+        # add two scatter traces
+        fig.add_trace(go.Scatter(x=df2['Date'],
+                                 y=df2['Actual'],
+                                 name=f'{stock_code_cmp} Actual'))
+
+        fig.add_trace(go.Scatter(x=df2['Date'],
+                                 y=df2['Prediction'],
+                                 name=f'{stock_code_cmp} Prediction',
+                                 line=dict(dash='dash')))
 
     fig.update_layout(
-        title=dict(text="Forecast Trend", font=dict(size=30))
+        title=dict(text="Forecast Trend", font=dict(size=30)),
+        xaxis_title='Date',
+        yaxis_title='Price'
     )
+    fig.update_xaxes(range=[start_date, end_date])
+
     return dcc.Graph(figure=fig)
 
 
