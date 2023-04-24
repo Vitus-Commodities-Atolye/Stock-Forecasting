@@ -31,3 +31,11 @@ Technology Sector (NDXT) Companies 3.
   o Will read trained model outputs, historical prices then show and visualize relevant price history and forecasted price charts.
   o Will provide the ability to compare 2 tickers
 - Present your solution and reasoning behind your implemented ML model configurations
+
+
+## Run the app
+The program runs at default port which is https://localhost:8050
+
+```
+python display.py
+```
