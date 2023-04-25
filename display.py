@@ -129,7 +129,8 @@ def update_stock_graph(stock_code, stock_code_cmp, start_date, end_date, interva
 
         forecast = forecasts.query(f"Stock in ['{stock_code}']")
         forecast_interval = forecast.loc[
-            (forecast['Date'] >= (pd.Timestamp(end_date) - pd.DateOffset(days=2))) & (forecast['Date'] <= pd.Timestamp(p_end_date))]
+            (forecast['Date'] >= (pd.Timestamp(end_date) - pd.DateOffset(days=2))) & (
+                    forecast['Date'] <= pd.Timestamp(p_end_date))]
         print(forecast_interval)
         fig.add_trace(go.Scatter(
             x=forecast_interval['Date'],
@@ -145,6 +146,43 @@ def update_stock_graph(stock_code, stock_code_cmp, start_date, end_date, interva
             mode='lines',
             name=f'{stock_code} Actual',
         ))
+
+    # code repeats !!!
+    if stock_code_cmp is not None:
+        # query for gathering related ticker data.
+        stock_cmp = stocks.query(f"Stock in ['{stock_code_cmp}']")
+        if not stock_cmp.empty:
+            p_end_date = (pd.Timestamp(end_date) + pd.DateOffset(days=int(interval))).date()
+
+            stock_interval = stock_cmp.loc[
+                (stock_cmp['Date'] >= pd.Timestamp(start_date)) & (stock_cmp['Date'] <= pd.Timestamp(end_date))]
+            # draws a line of the given ticker's data
+            fig.add_trace(go.Scatter(
+                x=stock_interval['Date'],
+                y=stock_cmp['Close'],
+                mode='lines',
+                name=f'{stock_code_cmp}',
+            ))
+
+            forecast_cmp = forecasts.query(f"Stock in ['{stock_code_cmp}']")
+            forecast_interval = forecast_cmp.loc[
+                (forecast_cmp['Date'] >= (pd.Timestamp(end_date) - pd.DateOffset(days=2))) & (
+                        forecast_cmp['Date'] <= pd.Timestamp(p_end_date))]
+            print(forecast_interval)
+            fig.add_trace(go.Scatter(
+                x=forecast_interval['Date'],
+                y=forecast_cmp['Prediction'],
+                mode='lines',
+                name=f'{stock_code_cmp} Prediction',
+                line=dict(dash='dash'),
+            ))
+
+            fig.add_trace(go.Scatter(
+                x=forecast_interval['Date'],
+                y=forecast_interval['Actual'],
+                mode='lines',
+                name=f'{stock_code_cmp} Actual',
+            ))
 
     return dcc.Graph(figure=fig)
 
