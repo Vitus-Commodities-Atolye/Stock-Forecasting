@@ -118,7 +118,7 @@ def _train_xgboost(X_train, y_train, X_test, y_test):
     return xgb_best
 
 
-def train_linear_regression(X_train, y_train, X_test, y_test):
+def train_decisiontree_regression(X_train, y_train, X_test, y_test):
     """
     Function that uses decision tree regressor to train the model
     :return:
@@ -176,9 +176,9 @@ def _train_random_forest(X_train, y_train, X_test, y_test):
     return rf_best
 
 
-def _ensemble_model(rf_model, xgb_model, gbr_model, lr_model, X_train, y_train, X_test, y_test):
+def _ensemble_model(rf_model, xgb_model, gbr_model, dt_model, X_train, y_train, X_test, y_test):
     # Create a dictionary of our models
-    estimators = [('rf', rf_model), ('xgb', xgb_model), ('gbr', gbr_model), ('lr', lr_model)]
+    estimators = [('rf', rf_model), ('xgb', xgb_model), ('gbr', gbr_model), ('dt', dt_model)]
 
     # Create our voting classifier, inputting our models
     ensemble = VotingRegressor(estimators)
@@ -198,16 +198,16 @@ def calculate_min_error_model(X_train, y_train, X_test, y_test):
     rf_model = _train_random_forest(X_train, y_train, X_test, y_test)
     xgb_model = _train_xgboost(X_train, y_train, X_test, y_test)
     gbr_model = _train_gbr(X_train, y_train, X_test, y_test)
-    lr_model = train_linear_regression(X_train, y_train, X_test, y_test)
-    ensemble_model = _ensemble_model(rf_model, xgb_model, gbr_model, lr_model, X_train, y_train, X_test, y_test)
+    dt_model = train_decisiontree_regression(X_train, y_train, X_test, y_test)
+    ensemble_model = _ensemble_model(rf_model, xgb_model, gbr_model, dt_model, X_train, y_train, X_test, y_test)
 
     rf_prediction = rf_model.predict(X_test)
     xgb_prediction = xgb_model.predict(X_test)
     gbr_prediction = gbr_model.predict(X_test)
-    lr_prediction = lr_model.predict(X_test)
+    dt_prediction = dt_model.predict(X_test)
     ensemble_prediction = ensemble_model.predict(X_test)
 
-    models = dict(random_forest=rf_prediction, xgb=xgb_prediction, gbr=gbr_prediction, lr=lr_prediction,
+    models = dict(random_forest=rf_prediction, xgb=xgb_prediction, gbr=gbr_prediction, dt=dt_prediction,
                   ensemble=ensemble_prediction)
     return models
 
@@ -219,33 +219,33 @@ def determine_best_model(predict_array, y_test, days, period):
     rf_rmse = mean_squared_error(y_test[:days], predict_array['random_forest'][:days], squared=False)
     xgb_rmse = mean_squared_error(y_test[:days], predict_array['xgb'][:days], squared=False)
     gbr_rmse = mean_squared_error(y_test[:days], predict_array['gbr'][:days], squared=False)
-    lr_rmse = mean_squared_error(y_test[:days], predict_array['lr'][:days], squared=False)
+    dt_rmse = mean_squared_error(y_test[:days], predict_array['dt'][:days], squared=False)
     ensemb_rmse = mean_squared_error(y_test[:days], predict_array['ensemble'][:days], squared=False)
 
     print(f"period = {period}, days = {days}")
     print("Root Mean Squared Error (rf_rmse): {:.2f}".format(rf_rmse))
     print("Root Mean Squared Error (xgb_rmse): {:.2f}".format(xgb_rmse))
     print("Root Mean Squared Error (gbr_rmse): {:.2f}".format(gbr_rmse))
-    print("Root Mean Squared Error (lr_rmse): {:.2f}".format(lr_rmse))
+    print("Root Mean Squared Error (dt_rmse): {:.2f}".format(dt_rmse))
     print("Root Mean Squared Error (ensemb_rmse): {:.2f}".format(ensemb_rmse))
 
     # Determine which model has the smallest RMSE
-    if rf_rmse == min(rf_rmse, xgb_rmse, gbr_rmse, ensemb_rmse):
+    if rf_rmse == min(rf_rmse, xgb_rmse, gbr_rmse,dt_rmse, ensemb_rmse):
         best_model_info_dict['pred_model'] = predict_array['random_forest'][:days]
         best_model_info_dict['model_error'] = rf_rmse
         best_model_info_dict['model_name'] = "Random Forest"
-    elif xgb_rmse == min(rf_rmse, xgb_rmse, gbr_rmse, ensemb_rmse):
+    elif xgb_rmse == min(rf_rmse, xgb_rmse, gbr_rmse,dt_rmse, ensemb_rmse):
         best_model_info_dict['pred_model'] = predict_array['xgb'][:days]
         best_model_info_dict['model_error'] = xgb_rmse
         best_model_info_dict['model_name'] = "XGB"
-    elif gbr_rmse == min(rf_rmse, xgb_rmse, gbr_rmse, ensemb_rmse):
+    elif gbr_rmse == min(rf_rmse, xgb_rmse, gbr_rmse,dt_rmse, ensemb_rmse):
         best_model_info_dict['pred_model'] = predict_array['gbr'][:days]
         best_model_info_dict['model_error'] = gbr_rmse
         best_model_info_dict['model_name'] = "gbr"
-    elif lr_rmse == min(rf_rmse, xgb_rmse, gbr_rmse, lr_rmse, ensemb_rmse):
-        best_model_info_dict['pred_model'] = predict_array['lr'][:days]
-        best_model_info_dict['model_error'] = gbr_rmse
-        best_model_info_dict['model_name'] = "lr"
+    elif dt_rmse == min(rf_rmse, xgb_rmse, gbr_rmse, dt_rmse, ensemb_rmse):
+        best_model_info_dict['pred_model'] = predict_array['dt'][:days]
+        best_model_info_dict['model_error'] = dt_rmse
+        best_model_info_dict['model_name'] = "dt"
     else:
         best_model_info_dict['pred_model'] = predict_array['ensemble'][:days]
         best_model_info_dict['model_error'] = ensemb_rmse
