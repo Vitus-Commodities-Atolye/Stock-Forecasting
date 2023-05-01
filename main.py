@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import yfinance as yf
+from daal4py.sklearn.linear_model import Lasso
 
 from numpy import mat
 from sklearn.ensemble import RandomForestRegressor, VotingClassifier, GradientBoostingRegressor, VotingRegressor
@@ -14,12 +15,14 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import mean_squared_error
 from sklearn.svm import SVR
 import xgboost as xgb
+from sklearn.tree import DecisionTreeRegressor
 
 
 def set_data(ticker, end_date, period):
     start_date = end_date - timedelta(days=period)
 
     data = yf.download(ticker, start=start_date, end=end_date)
+
 
     # Save the data as a CSV file
     # data.to_csv(f"{ticker}_{period}.csv", index=True)
@@ -69,6 +72,8 @@ def set_data(ticker, end_date, period):
 
     df = pd.DataFrame(data)
 
+
+
     return df
 
 
@@ -115,28 +120,31 @@ def _train_xgboost(X_train, y_train, X_test, y_test):
 
 def train_linear_regression(X_train, y_train, X_test, y_test):
     """
-    Function that uses linear regression to train the model
+    Function that uses decision tree regressor to train the model
     :return:
     """
 
     # Define parameter grid for GridSearchCV
     param_grid = {
-        'fit_intercept': [True, False]
+        'max_depth': [5, 10, None],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4]
     }
 
-    # Create Linear Regression model
-    lr = LinearRegression()
+    # Create Decision Tree Regressor
+    dt = DecisionTreeRegressor()
 
     # Use GridSearchCV to find best hyperparameters
-    grid_search = GridSearchCV(estimator=lr, param_grid=param_grid, cv=5, n_jobs=-1)
+    grid_search = GridSearchCV(estimator=dt, param_grid=param_grid, cv=5, n_jobs=-1)
     grid_search.fit(X_train, y_train)
 
     # Save best model
-    lr_best = grid_search.best_estimator_
-    # Make predictions on the testing data
-    y_pred = lr_best.predict(X_test)
+    dt_best = grid_search.best_estimator_
 
-    return lr_best
+    # Make predictions on the testing data
+    y_pred = dt_best.predict(X_test)
+
+    return dt_best
 
 
 def _train_random_forest(X_train, y_train, X_test, y_test):
@@ -251,10 +259,11 @@ def main():
     min_14day_error_val = 100
     min_march_day_error_val = 100
     df_all_predicts = pd.DataFrame()
-    df_all_companies = pd.DataFrame()
+    df_all_companies = pd.DataFrame(columns=['Stock'])
+
     # Define the ticker symbols and period of interest
     tickers = ["AAPL", "MSFT", "AMZN"]
-    periods = [120, 180]
+    periods = [120, 180, 270, 365, 720]
 
     # take input from user as end date
     end_date = input("Enter end date (YYYY-MM-DD): ")
@@ -269,7 +278,6 @@ def main():
         for period in periods:
             dataframe = set_data(ticker, end_date, period)  # calculate start date as 1 year before end date
 
-            df_all_companies = df_all_companies._append(dataframe)
 
             train_data, test_data = train_test_split(dataframe, test_size=0.3, shuffle=False)
 
@@ -314,11 +322,12 @@ def main():
         actual_pred_df = pd.DataFrame(
             {'Date': actual_one_month_values.index, 'Stock Name': ticker, 'Prediction': best_forecasts_for_month,
              'Actual': actual_one_month_values['Close'].values})
-        actual_pred_df.to_csv('actual_vs_predicted.csv', columns=['Date', 'Stock Name', 'Actual', 'Prediction'],
-                              index=False)
 
         print(actual_pred_df)
         df_all_predicts = df_all_predicts._append(actual_pred_df)
+        dataframe.insert(0, 'Stock', ticker)
+        print(dataframe)
+        df_all_companies = df_all_companies._append(dataframe)
 
     # save the DataFrame as a CSV file
     df_all_predicts.to_csv("prediction_results.csv", index=True)
