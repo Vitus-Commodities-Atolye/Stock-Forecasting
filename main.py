@@ -1,28 +1,31 @@
 from datetime import datetime, timedelta
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import yfinance as yf
-from daal4py.sklearn.linear_model import Lasso
-
-from numpy import mat
-from sklearn.ensemble import RandomForestRegressor, VotingClassifier, GradientBoostingRegressor, VotingRegressor
+from sklearn.ensemble import RandomForestRegressor,GradientBoostingRegressor, VotingRegressor
 from finta import TA
-from sklearn.linear_model import LinearRegression
-
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import mean_squared_error
-from sklearn.svm import SVR
 import xgboost as xgb
 from sklearn.tree import DecisionTreeRegressor
 
 
 def set_data(ticker, end_date, period):
+
+    """
+    The code defines a function set_data that takes three arguments: ticker, end_date, and period.
+    It downloads historical financial data using Yahoo Finance API for the specified ticker within the time range between end_date and period days before end_date.
+    It then uses the finta library to calculate technical indicators and moving averages from the historical data.
+    The function returns a cleaned and processed Pandas DataFrame containing the financial data and calculated technical indicators as features.
+    :param ticker:
+    :param end_date:
+    :param period:
+    :return:
+    """
     start_date = end_date - timedelta(days=period)
 
     data = yf.download(ticker, start=start_date, end=end_date)
-
 
     # Save the data as a CSV file
     # data.to_csv(f"{ticker}_{period}.csv", index=True)
@@ -72,12 +75,18 @@ def set_data(ticker, end_date, period):
 
     df = pd.DataFrame(data)
 
-
-
     return df
 
 
 def _train_gbr(X_train, y_train, X_test, y_test):
+    """
+    :param X_train:
+    :param y_train:
+    :param X_test:
+    :param y_test:
+    :return:
+    This is a function named _train_gbr that trains a Gradient Boosting Regressor model using GridSearchCV to find the best hyperparameters.
+    """
     # create the model
     gb_model = GradientBoostingRegressor()
 
@@ -98,6 +107,14 @@ def _train_gbr(X_train, y_train, X_test, y_test):
 
 
 def _train_xgboost(X_train, y_train, X_test, y_test):
+    """
+    n XGBoost regressor model using grid search to find the best hyperparameters.
+    :param X_train:
+    :param y_train:
+    :param X_test:
+    :param y_test:
+    :return:
+    """
     # Define model
     xgb_model = xgb.XGBRegressor()
 
@@ -120,7 +137,9 @@ def _train_xgboost(X_train, y_train, X_test, y_test):
 
 def train_decisiontree_regression(X_train, y_train, X_test, y_test):
     """
-    Function that uses decision tree regressor to train the model
+   This function trains a decision tree regressor model using the provided training data (X_train and y_train).
+   It then performs a grid search to find the best hyperparameters for the model (max_depth, min_samples_split, and min_samples_leaf).
+   The best model is saved, and predictions are made on the testing data (X_tes
     :return:
     """
 
@@ -149,7 +168,8 @@ def train_decisiontree_regression(X_train, y_train, X_test, y_test):
 
 def _train_random_forest(X_train, y_train, X_test, y_test):
     """
-    Function that uses random forest classifier to train the model
+    This function trains a random forest regression model using the RandomForestRegressor class from scikit-learn library.
+    It also performs hyperparameter tuning using GridSearchCV to find the best set of hyperparameters among n_estimators, max_depth, min_samples_split, and min_samples_leaf
     :return:
     """
 
@@ -177,6 +197,20 @@ def _train_random_forest(X_train, y_train, X_test, y_test):
 
 
 def _ensemble_model(rf_model, xgb_model, gbr_model, dt_model, X_train, y_train, X_test, y_test):
+    """
+    This function creates an ensemble model by combining four different regression models:
+    random forest (rf_model), XGBoost (xgb_model), Gradient Boosting Regression (gbr_model), and Decision Tree Regression (dt_model).
+    It uses the VotingRegressor class from the scikit-learn library to combine the models.
+    :param rf_model:
+    :param xgb_model:
+    :param gbr_model:
+    :param dt_model:
+    :param X_train:
+    :param y_train:
+    :param X_test:
+    :param y_test:
+    :return:
+    """
     # Create a dictionary of our models
     estimators = [('rf', rf_model), ('xgb', xgb_model), ('gbr', gbr_model), ('dt', dt_model)]
 
@@ -195,6 +229,18 @@ def _ensemble_model(rf_model, xgb_model, gbr_model, dt_model, X_train, y_train, 
 
 
 def calculate_min_error_model(X_train, y_train, X_test, y_test):
+    """
+    This function takes in training and testing data and trains several regression models,
+    including Random Forest, XGBoost, Gradient Boosting, Decision Tree, and an ensemble of all models.
+    It then makes predictions on the testing data using each model and returns a dictionary of the predictions for each model.
+    The goal is to determine the model with the minimum error, although the function does not actually calculate or return the minimum error itself.
+    :param X_train:
+    :param y_train:
+    :param X_test:
+    :param y_test:
+    :return:
+    """
+
     rf_model = _train_random_forest(X_train, y_train, X_test, y_test)
     xgb_model = _train_xgboost(X_train, y_train, X_test, y_test)
     gbr_model = _train_gbr(X_train, y_train, X_test, y_test)
@@ -213,6 +259,18 @@ def calculate_min_error_model(X_train, y_train, X_test, y_test):
 
 
 def determine_best_model(predict_array, y_test, days, period):
+    """
+    The predict_array parameter is a dictionary containing predicted values for different models,
+    where the keys represent the model names and the values represent the predicted values.
+    The y_test parameter is a numpy array of actual values.
+    The days parameter is an integer indicating the number of days for which to calculate the root mean squared error (RMSE) for each model.
+    Finally, the period parameter is an integer indicating the period (in days) for which the models were trained.
+    :param predict_array:
+    :param y_test:
+    :param days:
+    :param period:
+    :return:
+    """
     best_model_info_dict = dict(pred_model=None, model_error=None, model_name=None, period=period)
 
     # Calculate the RMSE
@@ -222,6 +280,15 @@ def determine_best_model(predict_array, y_test, days, period):
     dt_rmse = mean_squared_error(y_test[:days], predict_array['dt'][:days], squared=False)
     ensemb_rmse = mean_squared_error(y_test[:days], predict_array['ensemble'][:days], squared=False)
 
+    models = ['Random Forest', 'XGBoost', 'GBR', 'Decision Tree', 'Ensemble']
+    rmse_values = [rf_rmse, xgb_rmse, gbr_rmse, dt_rmse, ensemb_rmse]
+
+    plt.plot(models, rmse_values, marker='o')
+    plt.xlabel('Models')
+    plt.ylabel('RMSE')
+    plt.title(f"RMSE values for different models for {days} days within period of the {period}")
+    plt.show()
+
     print(f"period = {period}, days = {days}")
     print("Root Mean Squared Error (rf_rmse): {:.2f}".format(rf_rmse))
     print("Root Mean Squared Error (xgb_rmse): {:.2f}".format(xgb_rmse))
@@ -230,15 +297,15 @@ def determine_best_model(predict_array, y_test, days, period):
     print("Root Mean Squared Error (ensemb_rmse): {:.2f}".format(ensemb_rmse))
 
     # Determine which model has the smallest RMSE
-    if rf_rmse == min(rf_rmse, xgb_rmse, gbr_rmse,dt_rmse, ensemb_rmse):
+    if rf_rmse == min(rf_rmse, xgb_rmse, gbr_rmse, dt_rmse, ensemb_rmse):
         best_model_info_dict['pred_model'] = predict_array['random_forest'][:days]
         best_model_info_dict['model_error'] = rf_rmse
         best_model_info_dict['model_name'] = "Random Forest"
-    elif xgb_rmse == min(rf_rmse, xgb_rmse, gbr_rmse,dt_rmse, ensemb_rmse):
+    elif xgb_rmse == min(rf_rmse, xgb_rmse, gbr_rmse, dt_rmse, ensemb_rmse):
         best_model_info_dict['pred_model'] = predict_array['xgb'][:days]
         best_model_info_dict['model_error'] = xgb_rmse
         best_model_info_dict['model_name'] = "XGB"
-    elif gbr_rmse == min(rf_rmse, xgb_rmse, gbr_rmse,dt_rmse, ensemb_rmse):
+    elif gbr_rmse == min(rf_rmse, xgb_rmse, gbr_rmse, dt_rmse, ensemb_rmse):
         best_model_info_dict['pred_model'] = predict_array['gbr'][:days]
         best_model_info_dict['model_error'] = gbr_rmse
         best_model_info_dict['model_name'] = "gbr"
@@ -251,13 +318,15 @@ def determine_best_model(predict_array, y_test, days, period):
         best_model_info_dict['model_error'] = ensemb_rmse
         best_model_info_dict['model_name'] = "Ensemble"
 
+
     return best_model_info_dict
 
 
 def main():
-    min_7day_error_val = 100
-    min_14day_error_val = 100
-    min_march_day_error_val = 100
+    """
+     predict stock prices for a set of tickers (AAPL, MSFT, and AMZN) over a range of time periods (120, 180, 270, 365, and 720 days).
+    :return:
+    """
     df_all_predicts = pd.DataFrame()
     df_all_companies = pd.DataFrame(columns=['Stock'])
 
@@ -274,10 +343,12 @@ def main():
 
     for ticker in tickers:
         actual_one_month_values = yf.download(ticker, start=end_date, end=actual_end_date, interval='1d')
+        min_7day_error_val = 100
+        min_14day_error_val = 100
+        min_one_month_error_val = 100
 
         for period in periods:
             dataframe = set_data(ticker, end_date, period)  # calculate start date as 1 year before end date
-
 
             train_data, test_data = train_test_split(dataframe, test_size=0.3, shuffle=False)
 
@@ -302,22 +373,22 @@ def main():
                 best_for_14_days = for_14_days
                 min_14day_error_val = for_14_days['model_error']
 
-            for_march_days = determine_best_model(predict_models, y_test, len(actual_one_month_values.index), period)
-            if for_march_days['model_error'] < min_march_day_error_val:
-                best_for_march_days = for_march_days
-                min_march_day_error_val = for_march_days['model_error']
+            for_one_month_days = determine_best_model(predict_models, y_test, len(actual_one_month_values.index), period)
+            if for_one_month_days['model_error'] < min_one_month_error_val:
+                best_one_month_days = for_one_month_days
+                min_one_month_error_val = for_one_month_days['model_error']
 
         print("Ticker name: ", ticker, "\n",
               "Best Model for 7 days: ", best_for_7_days['model_name'], "\n",
               "Period: ", best_for_7_days['period'], "\n",
               "Best Model for 14 days: ", best_for_14_days['model_name'], "\n",
               "Period: ", best_for_14_days['period'], "\n",
-              "Best Model for one month days: ", best_for_march_days['model_name'], "\n",
-              "Period: ", best_for_march_days['period'], "\n", )
+              "Best Model for one month days: ", best_one_month_days['model_name'], "\n",
+              "Period: ", best_one_month_days['period'], "\n", )
 
         best_forecasts_for_month = list(best_for_7_days['pred_model']) + list(
-            best_for_14_days['pred_model'][len(for_7_days['pred_model']):]) + list(
-            best_for_march_days['pred_model'][len(for_14_days['pred_model']):])
+            best_for_14_days['pred_model'][len(best_for_7_days['pred_model']):]) + list(
+            best_one_month_days['pred_model'][len(best_for_14_days['pred_model']):])
 
         actual_pred_df = pd.DataFrame(
             {'Date': actual_one_month_values.index, 'Stock Name': ticker, 'Prediction': best_forecasts_for_month,
